@@ -13,18 +13,19 @@ function registrarBuzo(datos) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hoja = ss.getSheetByName("DB_BUZOS");
   
-  if (!hoja) return "Error: No se encontró la pestaña DB_BUZOS";
+  if (!hoja) return "Error: No encontré la pestaña 'DB_BUZOS'.";
 
-  // Agregamos la fila con los datos del formulario
+  // EL NUEVO ORDEN SEGÚN TU IMAGEN:
   hoja.appendRow([
-    new Date(), // ID Temporal (Fecha)
-    datos.nombre,
-    datos.apellido,
-    datos.dni,
-    datos.email,
-    datos.celular,
-    "PENDIENTE" // Estado inicial
+    new Date(),      // A: Timestamp
+    datos.nombre,    // B: Nombre
+    datos.apellido,  // C: Apellido
+    datos.dni,       // D: DNI
+    datos.libreta,   // E: Libreta N° (EL QUE AGREGASTE)
+    datos.email,     // F: Email
+    datos.celular,   // G: Celular
+    "PENDIENTE"      // H: Estado
   ]);
   
-  return "Registro exitoso, Mauro. Datos guardados.";
+  return "¡Éxito! Registro completo con Libreta N° " + datos.libreta;
 }
