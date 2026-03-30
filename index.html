@@ -52,11 +52,11 @@
         <div class="row">
           <div class="col-md-6 mb-3">
             <label class="form-label">Nombre</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej: Mauro" required>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Juan" required>
           </div>
           <div class="col-md-6 mb-3">
             <label class="form-label">Apellido</label>
-            <input type="text" name="apellido" class="form-control" placeholder="Ej: Molinari" required>
+            <input type="text" name="apellido" class="form-control" placeholder="Ej: Perez" required>
           </div>
         </div>
 
@@ -65,10 +65,17 @@
             <label class="form-label">DNI</label>
             <input type="number" name="dni" class="form-control" placeholder="Sin puntos" required>
           </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Libreta N°</label>
-            <input type="text" name="libreta" class="form-control" placeholder="Ej: 12345-P" required>
-          </div>
+         <div class="col-md-6 mb-3">
+  <label class="form-label">Libreta N°</label>
+  <input type="text" 
+         name="libreta" 
+         class="form-control" 
+         placeholder="Máx. 4 números" 
+         maxlength="4" 
+         pattern="\d{1,4}" 
+         title="Solo se permiten hasta 4 números sin los 0 iniciales" 
+         required>
+</div>
         </div>
 
         <div class="mb-3">
@@ -76,10 +83,19 @@
           <input type="email" name="email" class="form-control" placeholder="correo@ejemplo.com" required>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Teléfono Celular</label>
-          <input type="tel" name="celular" class="form-control" placeholder="Cod. área + número" required>
-        </div>
+       <div class="mb-3">
+  <label class="form-label">Teléfono Celular (10 dígitos)</label>
+  <input type="tel" 
+         name="celular" 
+         class="form-control" 
+         placeholder="Ej: 1122334455 (Sin 0 ni 15)" 
+         minlength="10" 
+         maxlength="10" 
+         pattern="[0-9]{10}" 
+         title="Deben ser exactamente 10 números (Cod. área + número, sin 0 ni 15)" 
+         required>
+  <div class="form-text text-muted">Ejemplo: 11 + 8 números (Capital) o 221 + 7 números (La Plata).</div>
+</div>
 
         <div class="mt-4">
           <button type="submit" class="btn btn-primary w-100 shadow-sm">
@@ -107,10 +123,13 @@
 
       google.script.run
       .withSuccessHandler(function(res) {
-  msgDiv.innerText = res.msg;
+  const urlLogin = 'https://script.google.com/macros/s/AKfycbzMg6OVrhKYQTa5imfDw6ON3334Z4pEcOAsEQeEHPf5kylQXuFb5yQWwthbIAroRe73ZQ/exec';
+  msgDiv.innerHTML = res.ok 
+    ? res.msg + '<br><br><a href="' + urlLogin + '" class="btn btn-success btn-sm mt-2">→ Ingresar al Panel</a>'
+    : res.msg;
   msgDiv.classList.remove('d-none', res.ok ? 'alert-danger' : 'alert-success');
   msgDiv.classList.add(res.ok ? 'alert-success' : 'alert-danger');
-  if (res.ok) { e.target.reset(); }
+  if (res.ok) e.target.reset();
   btn.disabled = false;
   btn.innerText = "FINALIZAR REGISTRO";
 })
