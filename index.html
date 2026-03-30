@@ -5,124 +5,166 @@
   <base target="_top">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { 
-      background-color: #e9ecef; /* Gris claro de fondo para que resalte el cuadro */
-      padding-top: 50px;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 14px; /* Un poco más que 12 para legibilidad web */
+    body { background-color: #f0f2f5; padding-top: 30px; font-size: 14px; }
+    .header-panel {
+      background: #0d3a6e;
+      color: white;
+      padding: 20px 30px;
+      border-radius: 10px;
+      margin-bottom: 25px;
     }
-    .card-custom {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 40px;
-      border-radius: 15px; /* Bordes redondeados */
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15); /* Sombra elegante */
-      border: 1px solid #dee2e6;
-    }
-    .form-label {
-      font-weight: bold; /* Negritas en las etiquetas */
-      color: #495057;
-      margin-bottom: 5px;
-    }
-    .header-section {
-      text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 3px solid #0d6efd;
-      padding-bottom: 15px;
-    }
-    .btn-primary {
-      font-weight: bold;
-      letter-spacing: 1px;
-      padding: 12px;
-    }
+    .badge-pendiente { background-color: #ffc107; color: #000; }
+    .badge-aprobado  { background-color: #198754; }
+    .badge-rechazado { background-color: #dc3545; }
+    .badge-suspendido { background-color: #6c757d; }
+    th { background-color: #0d3a6e; color: white; }
   </style>
 </head>
 <body>
-
-  <div class="container">
-    <div class="card-custom">
-      
-      <div class="header-section">
-        <h2 class="text-primary"><strong>PROYECTO EDC</strong></h2>
-        <p class="text-muted">Ecosistema Digital de Certificaciones</p>
-      </div>
-
-      <form id="formRegistro">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Nombre</label>
-            <input type="text" name="nombre" class="form-control" placeholder="Ej: Mauro" required>
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Apellido</label>
-            <input type="text" name="apellido" class="form-control" placeholder="Ej: Molinari" required>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">DNI</label>
-            <input type="number" name="dni" class="form-control" placeholder="Sin puntos" required>
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Libreta N°</label>
-            <input type="text" name="libreta" class="form-control" placeholder="Ej: 12345-P" required>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Correo Electrónico</label>
-          <input type="email" name="email" class="form-control" placeholder="correo@ejemplo.com" required>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">Teléfono Celular</label>
-          <input type="tel" name="celular" class="form-control" placeholder="Cod. área + número" required>
-        </div>
-
-        <div class="mt-4">
-          <button type="submit" class="btn btn-primary w-100 shadow-sm">
-            <strong>FINALIZAR REGISTRO</strong>
-          </button>
-        </div>
-      </form>
-
-      <div id="mensaje" class="mt-4 text-center alert d-none"></div>
-      
-      <div class="text-center mt-3">
-        <small class="text-muted">Sindicato ABP - Sistema de Asignación Transparente</small>
-      </div>
+<div class="container-fluid px-4">
+  
+  <div class="header-panel d-flex justify-content-between align-items-center">
+    <div>
+      <h4 class="mb-0">⚓ Panel ABP — Gestión de Buzos</h4>
+      <small>Sindicato de Buzos Profesionales · Sistema EDC</small>
+    </div>
+    <div>
+      <span id="contador" class="badge bg-light text-dark fs-6">Cargando...</span>
     </div>
   </div>
 
-  <script>
-    document.getElementById('formRegistro').onsubmit = function(e) {
-      e.preventDefault();
-      const btn = e.target.querySelector('button');
-      const msgDiv = document.getElementById('mensaje');
-      
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+  <!-- Filtros -->
+  <div class="row mb-3">
+    <div class="col-md-4">
+      <input type="text" id="buscador" class="form-control" placeholder="Buscar por nombre, DNI o libreta...">
+    </div>
+    <div class="col-md-3">
+      <select id="filtroEstado" class="form-select">
+        <option value="">Todos los estados</option>
+        <option value="PENDIENTE">PENDIENTE</option>
+        <option value="APROBADO">APROBADO</option>
+        <option value="RECHAZADO">RECHAZADO</option>
+        <option value="SUSPENDIDO">SUSPENDIDO</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-outline-secondary w-100" onclick="cargarBuzos()">🔄 Actualizar</button>
+    </div>
+  </div>
 
-      google.script.run
-        .withSuccessHandler(function(res) {
-          msgDiv.innerText = res;
-          msgDiv.classList.remove('d-none', 'alert-danger');
-          msgDiv.classList.add('alert-success');
-          e.target.reset();
-          btn.disabled = false;
-          btn.innerText = "FINALIZAR REGISTRO";
-        })
-        .withFailureHandler(function(err) {
-          msgDiv.innerText = "Error: " + err;
-          msgDiv.classList.remove('d-none', 'alert-success');
-          msgDiv.classList.add('alert-danger');
-          btn.disabled = false;
-          btn.innerText = "REINTENTAR";
-        })
-        .registrarBuzo(this);
-    };
-  </script>
+  <!-- Tabla -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover bg-white shadow-sm rounded">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Fecha</th>
+          <th>Nombre</th>
+          <th>DNI</th>
+          <th>Libreta</th>
+          <th>Email</th>
+          <th>Celular</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody id="tablaBuzos">
+        <tr><td colspan="9" class="text-center text-muted">Cargando datos...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let todosLosBuzos = [];
+
+function cargarBuzos() {
+  document.getElementById('tablaBuzos').innerHTML = 
+    '<tr><td colspan="9" class="text-center"><span class="spinner-border spinner-border-sm"></span> Cargando...</td></tr>';
+  
+  google.script.run
+    .withSuccessHandler(renderizarTabla)
+    .withFailureHandler(err => {
+      document.getElementById('tablaBuzos').innerHTML = 
+        '<tr><td colspan="9" class="text-danger">Error: ' + err + '</td></tr>';
+    })
+    .obtenerBuzos();
+}
+
+function renderizarTabla(buzos) {
+  todosLosBuzos = buzos;
+  document.getElementById('contador').textContent = buzos.length + ' buzos registrados';
+  filtrarYMostrar();
+}
+
+function filtrarYMostrar() {
+  const texto = document.getElementById('buscador').value.toLowerCase();
+  const estado = document.getElementById('filtroEstado').value;
+  
+  const filtrados = todosLosBuzos.filter(b => {
+    const coincideTexto = !texto || 
+      (b.nombre + ' ' + b.apellido).toLowerCase().includes(texto) ||
+      String(b.dni).includes(texto) ||
+      String(b.libreta).toLowerCase().includes(texto);
+    const coincideEstado = !estado || b.estado === estado;
+    return coincideTexto && coincideEstado;
+  });
+
+  const tbody = document.getElementById('tablaBuzos');
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Sin resultados</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtrados.map((b, idx) => {
+    const badgeClass = {
+      'PENDIENTE': 'badge-pendiente',
+      'APROBADO': 'badge-aprobado text-white',
+      'RECHAZADO': 'badge-rechazado text-white',
+      'SUSPENDIDO': 'badge-suspendido text-white'
+    }[b.estado] || 'bg-secondary text-white';
+
+    const fecha = b.timestamp ? new Date(b.timestamp).toLocaleDateString('es-AR') : '-';
+
+    return `<tr>
+      <td>${idx + 1}</td>
+      <td>${fecha}</td>
+      <td><strong>${b.nombre} ${b.apellido}</strong></td>
+      <td>${b.dni}</td>
+      <td>${b.libreta}</td>
+      <td><a href="mailto:${b.email}">${b.email}</a></td>
+      <td>${b.celular}</td>
+      <td><span class="badge ${badgeClass}">${b.estado}</span></td>
+      <td>
+        <select class="form-select form-select-sm" onchange="cambiarEstado(${b.fila}, this.value)" style="min-width:130px">
+          <option value="">— Cambiar —</option>
+          <option value="APROBADO">✅ Aprobar</option>
+          <option value="PENDIENTE">🕐 Pendiente</option>
+          <option value="RECHAZADO">❌ Rechazar</option>
+          <option value="SUSPENDIDO">⏸ Suspender</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function cambiarEstado(fila, nuevoEstado) {
+  if (!nuevoEstado) return;
+  if (!confirm('¿Cambiar estado a ' + nuevoEstado + '?')) return;
+  
+  google.script.run
+    .withSuccessHandler(() => cargarBuzos())
+    .withFailureHandler(err => alert('Error: ' + err))
+    .cambiarEstado(fila, nuevoEstado);
+}
+
+// Filtros en tiempo real
+document.getElementById('buscador').addEventListener('input', filtrarYMostrar);
+document.getElementById('filtroEstado').addEventListener('change', filtrarYMostrar);
+
+// Carga inicial
+cargarBuzos();
+</script>
 </body>
 </html>
