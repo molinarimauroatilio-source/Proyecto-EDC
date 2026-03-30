@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+    .header-buzo {
+      background: #0d3a6e; color: white;
+      padding: 20px 30px; margin-bottom: 25px;
+    }
+    .card-seccion {
+      background: white; border-radius: 10px;
+      padding: 25px; margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .badge-pendiente  { background-color: #ffc107; color: #000; }
+    .badge-aprobado   { background-color: #198754; color: white; }
+    .badge-rechazado  { background-color: #dc3545; color: white; }
+    .badge-suspendido { background-color: #6c757d; color: white; }
+  </style>
+</head>
+<body>
+
+<div class="header-buzo d-flex justify-content-between align-items-center">
+  <div>
+    <h5 class="mb-0">⚓ Panel del Buzo — EDC</h5>
+    <small id="nombreBuzo">Cargando...</small>
+  </div>
+  <div>
+    <span id="estadoBadge" class="badge fs-6">-</span>
+    <button onclick="cerrarSesion()" class="btn btn-outline-light btn-sm ms-3">Salir</button>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  <!-- Datos personales -->
+  <div class="card-seccion">
+    <h6 class="fw-bold text-primary mb-3">📋 Mis Datos</h6>
+    <div class="row" id="datosBuzo">
+      <p class="text-muted">Cargando datos...</p>
+    </div>
+  </div>
+
+  <!-- Documentos -->
+  <div class="card-seccion">
+    <h6 class="fw-bold text-primary mb-3">📎 Mis Documentos</h6>
+    <p class="text-muted small mb-3">Subí fotos legibles o PDFs. El Sindicato los revisará para aprobar tu perfil.</p>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Libreta de Buceo</label>
+        <input type="file" id="archivoLibreta" class="form-control" accept="image/*,application/pdf">
+        <button onclick="subirDoc('libreta')" class="btn btn-outline-primary btn-sm mt-2 w-100">📤 Subir</button>
+        <div id="msgLibreta" class="small mt-1"></div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Apto Médico</label>
+        <input type="file" id="archivoApto" class="form-control" accept="image/*,application/pdf">
+        <button onclick="subirDoc('apto')" class="btn btn-outline-primary btn-sm mt-2 w-100">📤 Subir</button>
+        <div id="msgApto" class="small mt-1"></div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold">Certificados Adicionales</label>
+        <input type="file" id="archivoCertificado" class="form-control" accept="image/*,application/pdf">
+        <button onclick="subirDoc('certificado')" class="btn btn-outline-primary btn-sm mt-2 w-100">📤 Subir</button>
+        <div id="msgCertificado" class="small mt-1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Postulaciones -->
+  <div class="card-seccion">
+    <h6 class="fw-bold text-primary mb-3">💼 Postularme a Trabajos</h6>
+    <div id="listaTrabajos">
+      <p class="text-muted">No hay trabajos disponibles en este momento.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Recuperar datos del buzo desde sessionStorage
+const buzoData = JSON.parse(sessionStorage.getItem('buzo') || 'null');
+
+if (!buzoData || !buzoData.ok) {
+  // No hay sesión — redirigir al login
+  google.script.run
+    .withSuccessHandler(url => { window.top.location.href = url; })
+    window.top.location.href = 'https://script.google.com/macros/s/AKfycbzMg6OVrhKYQTa5imfDw6ON3334Z4pEcOAsEQeEHPf5kylQXuFb5yQWwthbIAroRe73ZQ/exec';
+} else {
+  cargarPerfil();
+}
+
+function cargarPerfil() {
+  document.getElementById('nombreBuzo').textContent = 
+    buzoData.nombre + ' ' + buzoData.apellido + ' — DNI: ' + buzoData.dni;
+
+  const colores = {
+    'PENDIENTE':  'badge-pendiente',
+    'APROBADO':   'badge-aprobado',
+    'RECHAZADO':  'badge-rechazado',
+    'SUSPENDIDO': 'badge-suspendido'
+  };
+  const badge = document.getElementById('estadoBadge');
+  badge.textContent = buzoData.estado;
+  badge.className = 'badge fs-6 ' + (colores[buzoData.estado] || 'bg-secondary');
+
+  document.getElementById('datosBuzo').innerHTML = `
+    <div class="col-md-3"><strong>Nombre:</strong><br>${buzoData.nombre} ${buzoData.apellido}</div>
+    <div class="col-md-2"><strong>DNI:</strong><br>${buzoData.dni}</div>
+    <div class="col-md-2"><strong>Libreta:</strong><br>${buzoData.libreta}</div>
+    <div class="col-md-3"><strong>Email:</strong><br>${buzoData.email}</div>
+    <div class="col-md-2"><strong>Celular:</strong><br>${buzoData.celular}</div>
+  `;
+}
+
+function subirDoc(tipo) {
+  const ids = { libreta: 'archivoLibreta', apto: 'archivoApto', certificado: 'archivoCertificado' };
+  const msgs = { libreta: 'msgLibreta', apto: 'msgApto', certificado: 'msgCertificado' };
+  const nombres = { libreta: 'Libreta', apto: 'Apto Médico', certificado: 'Certificado' };
+
+  const archivo = document.getElementById(ids[tipo]).files[0];
+  const msgDiv  = document.getElementById(msgs[tipo]);
+
+  if (!archivo) {
+    msgDiv.innerHTML = '<span class="text-warning">Seleccioná un archivo primero.</span>';
+    return;
+  }
+
+  msgDiv.innerHTML = '<span class="text-info">Subiendo...</span>';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result.split(',')[1];
+    google.script.run
+      .withSuccessHandler(function(res) {
+        if (res.ok) {
+          msgDiv.innerHTML = '<span class="text-success">✅ ' + nombres[tipo] + ' subido correctamente.</span>';
+        } else {
+          msgDiv.innerHTML = '<span class="text-danger">❌ ' + res.msg + '</span>';
+        }
+      })
+      .withFailureHandler(function(err) {
+        msgDiv.innerHTML = '<span class="text-danger">Error: ' + JSON.stringify(err) + '</span>';
+      })
+      .subirDocumento(buzoData.dni, tipo, archivo.name, base64);
+  };
+  reader.readAsDataURL(archivo);
+}
+
+function cerrarSesion() {
+  sessionStorage.removeItem('buzo');
+  google.script.run
+    .withSuccessHandler(url => { window.top.location.href = url; })
+    window.top.location.href = 'https://script.google.com/macros/s/AKfycbzMg6OVrhKYQTa5imfDw6ON3334Z4pEcOAsEQeEHPf5kylQXuFb5yQWwthbIAroRe73ZQ/exec';
+}
+</script>
+</body>
+</html>
+
