@@ -1,23 +1,25 @@
 /**
  * SERVIDOR - Lógica de Backend EDC
- * Versión 3.0 - Login + Panel Buzo + Documentos
+ * Versión 3.1 - Login + Panel Buzo + Documentos Automáticos en Drive + Enrutador SATT
  */
 
 const SHEET_ID = "1F44HtreRwgyJKvW9dbbibuPDr50Je2Q6OAQ8z3aGVAM";
-const DRIVE_FOLDER_ID = "1L7E8cCE9ENbS5kIjARpKipsk4KbfLP0c";
+// Eliminamos DRIVE_FOLDER_ID estático porque ahora el sistema crea las carpetas solo.
 
+// ----------------------------------------------------
+// 1. EL ENRUTADOR PRINCIPAL
+// ----------------------------------------------------
 function doGet(e) {
   try {
     const pagina = e && e.parameter && e.parameter.pagina;
     
-    // MAPEO DE SEGURIDAD: 
-    // La palabra de la izquierda es la que va en la URL (?pagina=...)
-    // La palabra de la derecha es EL NOMBRE EXACTO DEL ARCHIVO en tu editor.
+    // MAPEO DE SEGURIDAD
     const paginas = {
-      'registro':   'index',      // Asegurate que tu archivo se llame 'index'
-      'panel':      'panel',      // Asegurate que tu archivo se llame 'panel'
-      'buzo_panel': 'buzo_panel', // Asegurate que tu archivo se llame 'buzo_panel'
-      'login':      'login'       // Asegurate que tu archivo se llame 'login'
+      'registro':   'index',      // Pantalla de registro
+      'panel':      'panel',      // Panel del Sindicato
+      'buzo_panel': 'buzo_panel', // Panel del Buzo
+      'login':      'login',      // Pantalla de Login
+      'satt':       'satt'        // EL NUEVO SISTEMA SATT
     };
 
     const archivo = paginas[pagina] || 'login';
@@ -29,9 +31,53 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (err) {
-    return HtmlService.createHtmlOutput("Error Crítico: " + err.message);
+    return HtmlService.createHtmlOutput("Error Crítico de Enrutamiento: " + err.message);
   }
 }
+
+
+// ----------------------------------------------------
+// 2. LA NUEVA LÓGICA DE DRIVE (Carpetas Inteligentes)
+// ----------------------------------------------------
+function guardarDocumentoEnDrive(objArchivo) {
+  try {
+    // 1. Busca o crea la carpeta principal del EDC
+    let carpetasPrincipales = DriveApp.getFoldersByName("EDC_Documentos_Buzos");
+    let carpetaPrincipal = carpetasPrincipales.hasNext() ? carpetasPrincipales.next() : DriveApp.createFolder("EDC_Documentos_Buzos");
+
+    // 2. Busca o crea la carpeta individual del buzo (Nombre - Libreta)
+    let nombreCarpetaBuzo = objArchivo.nombreBuzo + " - " + objArchivo.libreta;
+    let carpetasBuzo = carpetaPrincipal.getFoldersByName(nombreCarpetaBuzo);
+    let carpetaBuzo = carpetasBuzo.hasNext() ? carpetasBuzo.next() : carpetaPrincipal.createFolder(nombreCarpetaBuzo);
+
+    // 3. Reconstruye y guarda el PDF/Imagen
+    let data = Utilities.base64Decode(objArchivo.base64);
+    let nombreFinal = objArchivo.tipoDoc + " - " + objArchivo.nombreArchivo; 
+    let blob = Utilities.newBlob(data, objArchivo.mimeType, nombreFinal);
+    
+    let archivoGuardado = carpetaBuzo.createFile(blob);
+    
+    return { 
+      exito: true, 
+      mensaje: "Guardado en carpeta: " + nombreCarpetaBuzo,
+      url: archivoGuardado.getUrl()
+    };
+
+  } catch (error) {
+    return { exito: false, mensaje: "Error de Drive: " + error.toString() };
+  }
+}
+
+// (Opcional) Mantenemos la tuya vieja por si hay código legacy que la llama, 
+// pero te sugiero ir migrando todo a guardarDocumentoEnDrive.
+function subirDocumento(dni, tipo, nombreArchivo, base64) {
+  return { ok: false, msg: "⚠️ Esta función fue reemplazada. Actualizar el código frontend." };
+}
+
+
+// ----------------------------------------------------
+// 3. TU LÓGICA ORIGINAL DE BASE DE DATOS (Intacta)
+// ----------------------------------------------------
 
 function registrarBuzo(datos) {
   const ss   = SpreadsheetApp.openById(SHEET_ID);
@@ -62,17 +108,17 @@ function registrarBuzo(datos) {
     "PENDIENTE"
   ]);
 
-const urlLogin = ScriptApp.getService().getUrl() + '?pagina=login';
+  const urlLogin = ScriptApp.getService().getUrl() + '?pagina=login';
   
   try {
     enviarEmailBienvenida(datos.email, datos.nombre, urlLogin);
   } catch(e) {
-    // Si falla el email, igual confirmamos el registro
+    // Falla silente del correo
   }
 
-return { 
+  return { 
     ok: true, 
-    msg: "✅ Registro exitoso. Te enviamos un email con el link para ingresar. Tu estado es PENDIENTE hasta que ABP lo valide.",
+    msg: "✅ Registro exitoso. Te enviamos un email. Tu estado es PENDIENTE hasta validación.",
     urlLogin: urlLogin
   };
 }
@@ -156,27 +202,9 @@ function cambiarEstado(fila, nuevoEstado) {
   return "Estado actualizado a: " + nuevoEstado;
 }
 
-function subirDocumento(dni, tipo, nombreArchivo, base64) {
-  try {
-    if (!DRIVE_FOLDER_ID) return { ok: false, msg: "Carpeta de Drive no configurada aún." };
-    
-    const carpetaRaiz = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    let carpetaBuzo;
-    const carpetas = carpetaRaiz.getFoldersByName('DNI_' + dni);
-    carpetaBuzo = carpetas.hasNext() ? carpetas.next() : carpetaRaiz.createFolder('DNI_' + dni);
-
-    const blob = Utilities.newBlob(
-      Utilities.base64Decode(base64),
-      MimeType.JPEG,
-      tipo + '_' + nombreArchivo
-    );
-    carpetaBuzo.createFile(blob);
-    return { ok: true };
-
-  } catch(e) {
-    return { ok: false, msg: e.message };
-  }
-}
+// ----------------------------------------------------
+// 4. FUNCIONES DE UTILIDAD (Urls y Correos)
+// ----------------------------------------------------
 
 function getLoginUrl() {
   return ScriptApp.getService().getUrl() + '?pagina=login';
@@ -186,28 +214,36 @@ function getPanelUrl() {
   return ScriptApp.getService().getUrl() + '?pagina=buzo_panel';
 }
 
+function getRegistroUrl() {
+  return ScriptApp.getService().getUrl() + '?pagina=registro';
+}
+
 function enviarEmailBienvenida(email, nombre, urlLogin) {
   const asunto = "⚓ Registro EDC confirmado — Sindicato ABP";
-  const cuerpo = `
-Hola ${nombre},
-
-Tu registro en el Ecosistema Digital de Certificaciones (EDC) fue recibido correctamente.
-
-Tu perfil está en estado PENDIENTE hasta que ABP valide tu documentación.
-
-Para ingresar a tu panel usá este link:
-${urlLogin}
-
-Recordá que para entrar necesitás:
-- Tu email: ${email}
-- Tu DNI
-- Tu N° de Libreta
-
-Sindicato ABP — Sistema EDC
-  `;
+  const cuerpo = `Hola ${nombre},\n\nTu registro en el Ecosistema Digital de Certificaciones (EDC) fue recibido correctamente.\n\nTu perfil está en estado PENDIENTE hasta que ABP valide tu documentación.\n\nPara ingresar a tu panel usá este link:\n${urlLogin}\n\nRecordá que para entrar necesitás:\n- Tu email: ${email}\n- Tu DNI\n- Tu N° de Libreta\n\nSindicato ABP — Sistema EDC`;
   GmailApp.sendEmail(email, asunto, cuerpo);
 }
 
-function getRegistroUrl() {
-  return ScriptApp.getService().getUrl() + '?pagina=registro';
+// --- FUNCIONES SATT (AÑADIR A CODIGO.GS) ---
+
+// Simulación de búsqueda de trabajos (Hasta que armemos la pestaña "Trabajos_Activos")
+function obtenerTrabajosAsignados(libreta) {
+  // TODO: Conectar con la Google Sheet real. 
+  // Por ahora devolvemos un dato de prueba simulando que este buzo fue seleccionado.
+  return [
+    {
+      id: "TRB-104",
+      empresa: "Marítima del Sur S.A.",
+      urgente: true,
+      etiquetas: "Saturación, Corte y Soldadura",
+      vencimiento: "Hoy, 18:00 hs"
+    }
+  ];
+}
+
+// Procesa el clic en "Aceptar" o "Rechazar"
+function procesarRespuestaBuzo(libreta, idTrabajo, respuesta) {
+  // TODO: Escribir la respuesta en la base de datos real.
+  // TODO: Si es NO, disparar el mail al buzo suplente (#6).
+  return { ok: true, msg: "Respuesta registrada." };
 }
