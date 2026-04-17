@@ -87,7 +87,6 @@ const buzoData = JSON.parse(sessionStorage.getItem('buzo') || 'null');
 if (!buzoData || !buzoData.ok) {
   // No hay sesión — redirigir al login
   google.script.run
-    .withSuccessHandler(url => { window.top.location.href = url; })
     window.top.location.href = 'https://script.google.com/macros/s/AKfycbzMg6OVrhKYQTa5imfDw6ON3334Z4pEcOAsEQeEHPf5kylQXuFb5yQWwthbIAroRe73ZQ/exec';
 } else {
   cargarPerfil();
@@ -152,11 +151,8 @@ function subirDoc(tipo) {
 
 function cerrarSesion() {
   sessionStorage.removeItem('buzo');
-  google.script.run
-    .withSuccessHandler(url => { window.top.location.href = url; })
-    window.top.location.href = 'https://script.google.com/macros/s/AKfycbzMg6OVrhKYQTa5imfDw6ON3334Z4pEcOAsEQeEHPf5kylQXuFb5yQWwthbIAroRe73ZQ/exec';
+  window.top.location.href = 'https://script.google.com/macros/s/AKfycbzMg6OVrhKYQTa5imfDw6ON3334Z4pEcOAsEQeEHPf5kylQXuFb5yQWwthbIAroRe73ZQ/exec';
 }
 </script>
 </body>
 </html>
-
