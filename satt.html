@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+    .header-satt { background: #0d3a6e; color: white; padding: 20px 30px; margin-bottom: 25px; }
+    .card-trabajo { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; border-left: 5px solid #0d6efd; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .trabajo-urgente { border-left-color: #dc3545; }
+    .btn-satt { width: 120px; }
+  </style>
+</head>
+<body>
+
+<div class="header-satt d-flex justify-content-between align-items-center">
+  <div>
+    <h5 class="mb-0">SATT — Sistema de Asignación Transparente</h5>
+    <small id="infoBuzo">Cargando perfil...</small>
+  </div>
+  <button onclick="volverAlPanel()" class="btn btn-outline-light btn-sm">⬅ Volver al Panel</button>
+</div>
+
+<div class="container pb-5">
+  <h6 class="fw-bold mb-4 text-primary">Ofertas Asignadas (Pendientes de Respuesta)</h6>
+  
+  <div id="contenedorTrabajos">
+    <div class="text-center text-muted mt-5">
+      <div class="spinner-border spinner-border-sm mb-2"></div><br>
+      Buscando asignaciones para tu perfil...
+    </div>
+  </div>
+</div>
+
+<script>
+// 1. Validar Sesión
+const buzoData = JSON.parse(sessionStorage.getItem('buzo') || 'null');
+if (!buzoData || !buzoData.ok) {
+  window.top.location.href = window.location.href.split('?')[0];
+} else {
+  document.getElementById('infoBuzo').textContent = buzoData.nombre + ' ' + buzoData.apellido + ' (Libreta: ' + buzoData.libreta + ')';
+  buscarTrabajos();
+}
+
+function volverAlPanel() {
+  window.top.location.href = window.location.href.split('?')[0] + '?pagina=buzo_panel';
+}
+
+// 2. Buscar Trabajos Asignados en el Backend
+function buscarTrabajos() {
+  google.script.run
+    .withSuccessHandler(mostrarTrabajos)
+    .withFailureHandler(function(err) {
+      document.getElementById('contenedorTrabajos').innerHTML = '<div class="alert alert-danger">Error de conexión: ' + err + '</div>';
+    })
+    .obtenerTrabajosAsignados(buzoData.libreta);
+}
+
+// 3. Renderizar las tarjetas
+function mostrarTrabajos(trabajos) {
+  const contenedor = document.getElementById('contenedorTrabajos');
+  
+  if (!trabajos || trabajos.length === 0) {
+    contenedor.innerHTML = `
+      <div class="card card-body text-center text-muted">
+        <p class="mb-0">No tenés ofertas pendientes de respuesta en este momento.</p>
+        <small>El sistema te notificará por email cuando seas seleccionado.</small>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  trabajos.forEach(t => {
+    const claseUrgente = t.urgente ? 'trabajo-urgente' : '';
+    const badgeUrgente = t.urgente ? '<span class="badge bg-danger ms-2">URGENTE (2hs)</span>' : '<span class="badge bg-primary ms-2">Normal (8hs)</span>';
+    
+    html += `
+      <div class="card-trabajo ${claseUrgente}" id="trabajo-${t.id}">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h5 class="mb-1">${t.empresa} ${badgeUrgente}</h5>
+            <p class="mb-1 text-muted small"><strong>ID:</strong> ${t.id} | <strong>Vence:</strong> ${t.vencimiento}</p>
+            <p class="mb-0"><strong>Etiquetas Requeridas:</strong> ${t.etiquetas}</p>
+          </div>
+          <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-success btn-satt me-2" onclick="responderTrabajo('${t.id}', 'SI')">Aceptar ✔</button>
+            <button class="btn btn-outline-danger btn-satt" onclick="responderTrabajo('${t.id}', 'NO')">Rechazar ✖</button>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  contenedor.innerHTML = html;
+}
+
+// 4. Enviar Respuesta
+function responderTrabajo(idTrabajo, respuesta) {
+  if (!confirm('¿Estás seguro de que querés ' + (respuesta === 'SI' ? 'ACEPTAR' : 'RECHAZAR') + ' este trabajo?')) return;
+
+  const btnContainer = document.querySelector(`#trabajo-${idTrabajo} .col-md-4`);
+  btnContainer.innerHTML = '<span class="text-info spinner-border spinner-border-sm me-2"></span> Procesando...';
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res.ok) {
+        document.getElementById(`trabajo-${idTrabajo}`).innerHTML = `<div class="alert alert-success mb-0">Respuesta registrada: ${respuesta}.</div>`;
+      } else {
+        alert("Error: " + res.msg);
+        buscarTrabajos(); // Recargar si falla
+      }
+    })
+    .procesarRespuestaBuzo(buzoData.libreta, idTrabajo, respuesta);
+}
+</script>
+</body>
+</html>
