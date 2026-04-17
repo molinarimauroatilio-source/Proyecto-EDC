@@ -61,29 +61,28 @@
     btn.innerText = "Verificando...";
     msg.className = "d-none";
 
-    google.script.run
-      .withSuccessHandler(function(res) {
-        if (res.ok) {
-          window.location.href = "<?= ScriptApp.getService().getUrl() ?>?pagina=buzo_panel&fila=" + res.fila;
-        } else {
-          msg.className = "mt-3 alert alert-danger";
-          msg.innerText = res.msg;
-          btn.disabled = false;
-          btn.innerText = "INGRESAR";
-        }
-      })
-      .withFailureHandler(function(err) {
-        msg.className = "mt-3 alert alert-danger";
-        msg.innerText = "Error de servidor.";
-        btn.disabled = false;
-        btn.innerText = "INGRESAR";
-      })
-      .loginBuzo(email, dni, libreta);
+   google.script.run
+  .withSuccessHandler(function(res) {
+    if (res.ok) {
+      // GUARDAR EN SESSIONSTORAGE ANTES DE REDIRIGIR
+      sessionStorage.setItem('buzo', JSON.stringify(res));
+      
+      window.location.href = "<?= ScriptApp.getService().getUrl() ?>?pagina=buzo_panel";
+    } else {
+      msg.className = "mt-3 alert alert-danger";
+      msg.innerText = res.msg;
+      btn.disabled = false;
+      btn.innerText = "INGRESAR";
+    }
+  })
+  .withFailureHandler(function(err) {
+    msg.className = "mt-3 alert alert-danger";
+    msg.innerText = "Error de servidor.";
+    btn.disabled = false;
+    btn.innerText = "INGRESAR";
+  })
+  .loginBuzo(email, dni, libreta);
   }
-</script>
-</body>
-</html>
-}
 </script>
 </body>
 </html>
